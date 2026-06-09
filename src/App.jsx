@@ -44,50 +44,38 @@ function createRealtimeChannel(roomId, onPayload) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// SHARED DATA
+// SHARED DATA — loaded dynamically from Supabase
 // ═══════════════════════════════════════════════════════════════════
-const PLAYERS_DB = [
-  { name: "Lionel Messi", clubs: ["Barcelona", "PSG", "Inter Miami"], country: "Argentina", trophies: ["Champions League", "World Cup", "Ballon d'Or"], league: ["LaLiga", "Ligue 1", "MLS"], position: ["Forward"] },
-  { name: "Cristiano Ronaldo", clubs: ["Manchester United", "Real Madrid", "Juventus", "Al Nassr"], country: "Portugal", trophies: ["Champions League", "Ballon d'Or"], league: ["Premier League", "LaLiga", "Serie A"], position: ["Forward"] },
-  { name: "Kylian Mbappé", clubs: ["Monaco", "PSG", "Real Madrid"], country: "France", trophies: ["World Cup", "Champions League"], league: ["Ligue 1", "LaLiga"], position: ["Forward"] },
-  { name: "Erling Haaland", clubs: ["Molde", "RB Salzburg", "Dortmund", "Manchester City"], country: "Norway", trophies: ["Champions League", "Premier League"], league: ["Premier League", "Bundesliga"], position: ["Forward"] },
-  { name: "Vinicius Jr", clubs: ["Flamengo", "Real Madrid"], country: "Brazil", trophies: ["Champions League"], league: ["LaLiga"], position: ["Forward"] },
-  { name: "Jude Bellingham", clubs: ["Birmingham", "Dortmund", "Real Madrid"], country: "England", trophies: ["Champions League"], league: ["Premier League", "Bundesliga", "LaLiga"], position: ["Midfielder"] },
-  { name: "Kevin De Bruyne", clubs: ["Chelsea", "Wolfsburg", "Manchester City"], country: "Belgium", trophies: ["Champions League", "Premier League"], league: ["Premier League", "Bundesliga"], position: ["Midfielder"] },
-  { name: "Mohamed Salah", clubs: ["Basel", "Chelsea", "Roma", "Liverpool"], country: "Egypt", trophies: ["Champions League", "Premier League"], league: ["Premier League", "Serie A"], position: ["Forward"] },
-  { name: "Harry Kane", clubs: ["Tottenham", "Bayern Munich"], country: "England", trophies: [], league: ["Premier League", "Bundesliga"], position: ["Forward"] },
-  { name: "Lamine Yamal", clubs: ["Barcelona"], country: "Spain", trophies: ["Euro"], league: ["LaLiga"], position: ["Forward"] },
-  { name: "Pedri", clubs: ["Las Palmas", "Barcelona"], country: "Spain", trophies: ["Euro"], league: ["LaLiga"], position: ["Midfielder"] },
-  { name: "Phil Foden", clubs: ["Manchester City"], country: "England", trophies: ["Champions League", "Premier League"], league: ["Premier League"], position: ["Midfielder"] },
-  { name: "Marcus Rashford", clubs: ["Manchester United"], country: "England", trophies: [], league: ["Premier League"], position: ["Forward"] },
-  { name: "Antoine Griezmann", clubs: ["Real Sociedad", "Atletico Madrid", "Barcelona"], country: "France", trophies: ["World Cup", "Euro"], league: ["LaLiga"], position: ["Forward"] },
-  { name: "Robert Lewandowski", clubs: ["Dortmund", "Bayern Munich", "Barcelona"], country: "Poland", trophies: ["Champions League", "Bundesliga"], league: ["Bundesliga", "LaLiga"], position: ["Forward"] },
-  { name: "Toni Kroos", clubs: ["Bayern Munich", "Real Madrid"], country: "Germany", trophies: ["Champions League", "World Cup", "Bundesliga"], league: ["Bundesliga", "LaLiga"], position: ["Midfielder"] },
-  { name: "Luka Modric", clubs: ["Dinamo Zagreb", "Tottenham", "Real Madrid"], country: "Croatia", trophies: ["Champions League", "Ballon d'Or"], league: ["Premier League", "LaLiga"], position: ["Midfielder"] },
-  { name: "Virgil van Dijk", clubs: ["Southampton", "Liverpool"], country: "Netherlands", trophies: ["Champions League", "Premier League"], league: ["Premier League"], position: ["Defender"] },
-  { name: "Alisson Becker", clubs: ["Roma", "Liverpool"], country: "Brazil", trophies: ["Champions League", "Premier League"], league: ["Premier League", "Serie A"], position: ["Goalkeeper"] },
-  { name: "Manuel Neuer", clubs: ["Schalke", "Bayern Munich"], country: "Germany", trophies: ["Champions League", "World Cup", "Bundesliga"], league: ["Bundesliga"], position: ["Goalkeeper"] },
-  { name: "Neymar Jr", clubs: ["Santos", "Barcelona", "PSG", "Al Hilal"], country: "Brazil", trophies: ["Champions League"], league: ["LaLiga", "Ligue 1"], position: ["Forward"] },
-  { name: "Karim Benzema", clubs: ["Lyon", "Real Madrid", "Al Ittihad"], country: "France", trophies: ["Champions League", "Ballon d'Or"], league: ["LaLiga"], position: ["Forward"] },
-  { name: "Sadio Mané", clubs: ["Southampton", "Liverpool", "Bayern Munich"], country: "Senegal", trophies: ["Champions League", "Premier League"], league: ["Premier League", "Bundesliga"], position: ["Forward"] },
-  { name: "Riyad Mahrez", clubs: ["Leicester", "Manchester City", "Al Ahli"], country: "Algeria", trophies: ["Premier League", "Champions League"], league: ["Premier League"], position: ["Forward"] },
-  { name: "Paulo Dybala", clubs: ["Palermo", "Juventus", "Roma"], country: "Argentina", trophies: ["Serie A"], league: ["Serie A"], position: ["Forward"] },
-  { name: "Romelu Lukaku", clubs: ["Anderlecht", "Chelsea", "Everton", "Manchester United", "Inter Milan", "Roma"], country: "Belgium", trophies: ["Serie A"], league: ["Premier League", "Serie A"], position: ["Forward"] },
-  { name: "Gareth Bale", clubs: ["Southampton", "Tottenham", "Real Madrid"], country: "Wales", trophies: ["Champions League"], league: ["Premier League", "LaLiga"], position: ["Forward"] },
-  { name: "Trent Alexander-Arnold", clubs: ["Liverpool"], country: "England", trophies: ["Champions League", "Premier League"], league: ["Premier League"], position: ["Defender"] },
-  { name: "Ruben Dias", clubs: ["Benfica", "Manchester City"], country: "Portugal", trophies: ["Champions League", "Premier League"], league: ["Premier League"], position: ["Defender"] },
-  { name: "Joshua Kimmich", clubs: ["RB Leipzig", "Bayern Munich"], country: "Germany", trophies: ["Champions League", "Bundesliga", "World Cup"], league: ["Bundesliga"], position: ["Midfielder", "Defender"] },
-  { name: "Thomas Müller", clubs: ["Bayern Munich"], country: "Germany", trophies: ["Champions League", "World Cup", "Bundesliga"], league: ["Bundesliga"], position: ["Forward", "Midfielder"] },
-  { name: "Raheem Sterling", clubs: ["Liverpool", "Manchester City", "Chelsea"], country: "England", trophies: ["Premier League"], league: ["Premier League"], position: ["Forward"] },
-  { name: "İlkay Gündoğan", clubs: ["Dortmund", "Manchester City", "Barcelona"], country: "Germany", trophies: ["Champions League", "Premier League"], league: ["Premier League", "Bundesliga", "LaLiga"], position: ["Midfielder"] },
-  { name: "Bernardo Silva", clubs: ["Monaco", "Manchester City"], country: "Portugal", trophies: ["Champions League", "Premier League"], league: ["Premier League", "Ligue 1"], position: ["Midfielder"] },
-  { name: "Son Heung-min", clubs: ["Hamburg", "Bayer Leverkusen", "Tottenham"], country: "South Korea", trophies: [], league: ["Premier League", "Bundesliga"], position: ["Forward"] },
-  { name: "Bukayo Saka", clubs: ["Arsenal"], country: "England", trophies: [], league: ["Premier League"], position: ["Forward", "Midfielder"] },
-  { name: "Jamal Musiala", clubs: ["Chelsea", "Bayern Munich"], country: "Germany", trophies: ["Bundesliga"], league: ["Bundesliga", "Premier League"], position: ["Midfielder", "Forward"] },
-  { name: "Florian Wirtz", clubs: ["Bayer Leverkusen"], country: "Germany", trophies: ["Bundesliga"], league: ["Bundesliga"], position: ["Midfielder"] },
-  { name: "Gavi", clubs: ["Barcelona"], country: "Spain", trophies: ["Euro"], league: ["LaLiga"], position: ["Midfielder"] },
-  { name: "Eden Hazard", clubs: ["Lille", "Chelsea", "Real Madrid"], country: "Belgium", trophies: ["Premier League"], league: ["Premier League", "LaLiga"], position: ["Forward"] },
-];
+let PLAYERS_DB = [];
+
+async function loadPlayers() {
+  if (PLAYERS_DB.length > 0) return PLAYERS_DB;
+  try {
+    // Load all players in pages of 1000
+    let allPlayers = [];
+    let page = 0;
+    while (true) {
+      const rows = await sbFetch(`players?select=*&limit=1000&offset=${page * 1000}`);
+      if (!rows || rows.length === 0) break;
+      allPlayers = allPlayers.concat(rows.map(p => ({
+        name: p.name,
+        clubs: p.clubs || [],
+        league: p.league || [],
+        position: p.position || [],
+        country: p.country || "",
+        trophies: p.trophies || [],
+        photo: p.photo || null,
+      })));
+      if (rows.length < 1000) break;
+      page++;
+    }
+    PLAYERS_DB = allPlayers;
+    return PLAYERS_DB;
+  } catch (e) {
+    console.error("Kunne ikke hente spillere:", e);
+    return [];
+  }
+}
 
 const CATEGORIES = [
   { id: "pl", label: "Premier League", emoji: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", check: (p) => p.league.includes("Premier League") },
@@ -621,7 +609,7 @@ function PossessionPlayOnline({roomId,playerNo,onBack}){
 // ═══════════════════════════════════════════════════════════════════
 // HOME SCREEN
 // ═══════════════════════════════════════════════════════════════════
-function HomeScreen({onSelect}){
+function HomeScreen({onSelect, playerCount}){
   const games=[
     {id:"ttt",title:"Tiki-Taka-Toe",emoji:"⚽",desc:"Fodbold Tic Tac Toe — gæt spillere der passer i 3×3 gitteret",color:"#3b82f6",bg:"#0a1628",border:"#1d4ed8"},
     {id:"pp",title:"Possession Play",emoji:"🔷",desc:"Hexagonkamp — navngiv spillere, styr territoriet, stjæl nabofelter",color:"#10b981",bg:"#071a12",border:"#059669"},
@@ -632,6 +620,7 @@ function HomeScreen({onSelect}){
         <div style={{fontSize:52,marginBottom:8}}>⚽</div>
         <h1 style={{fontSize:30,fontWeight:900,margin:0,letterSpacing:"-1px",color:"#f1f5f9"}}>Football Games</h1>
         <p style={{color:"#1e3a5f",margin:"8px 0 0",fontSize:12,letterSpacing:"0.08em",textTransform:"uppercase",fontWeight:700}}>Online multiplayer</p>
+        {playerCount>0&&<p style={{color:"#10b981",margin:"6px 0 0",fontSize:12,fontWeight:600}}>⚽ {playerCount} spillere i databasen</p>}
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:14,width:"100%",maxWidth:460}}>
         {games.map(g=>(
@@ -656,9 +645,29 @@ function HomeScreen({onSelect}){
 // APP ROOT
 // ═══════════════════════════════════════════════════════════════════
 export default function App(){
-  const[screen,setScreen]=useState("home");       // "home"|"lobby-ttt"|"lobby-pp"|"play-ttt"|"play-pp"
+  const[screen,setScreen]=useState("home");
   const[roomId,setRoomId]=useState(null);
   const[playerNo,setPlayerNo]=useState(null);
+  const[playersLoaded,setPlayersLoaded]=useState(false);
+  const[playerCount,setPlayerCount]=useState(0);
+
+  useEffect(()=>{
+    loadPlayers().then(players=>{
+      setPlayerCount(players.length);
+      setPlayersLoaded(true);
+    });
+  },[]);
+
+  if(!playersLoaded) return(
+    <div style={{minHeight:"100vh",background:"#060d18",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:"#f1f5f9",fontFamily:"'Inter',sans-serif",gap:16}}>
+      <div style={{fontSize:48}}>⚽</div>
+      <div style={{fontSize:18,fontWeight:700}}>Football Games</div>
+      <div style={{color:"#475569",fontSize:13}}>Henter spillerdatabase...</div>
+      <div style={{width:200,height:3,background:"#1e3045",borderRadius:4,overflow:"hidden",marginTop:8}}>
+        <div style={{width:"60%",height:"100%",background:"#3b82f6",borderRadius:4,animation:"pulse 1.5s ease-in-out infinite"}}/>
+      </div>
+    </div>
+  );
 
   const handleJoined=(game)=>(room,pNo)=>{
     setRoomId(room); setPlayerNo(pNo); setScreen(`play-${game}`);
@@ -669,5 +678,5 @@ export default function App(){
   if(screen==="play-ttt")  return <TikiTakaToeOnline  roomId={roomId} playerNo={playerNo} onBack={()=>setScreen("home")}/>;
   if(screen==="play-pp")   return <PossessionPlayOnline roomId={roomId} playerNo={playerNo} onBack={()=>setScreen("home")}/>;
 
-  return <HomeScreen onSelect={g=>setScreen(`lobby-${g}`)}/>;
+  return <HomeScreen onSelect={g=>setScreen(`lobby-${g}`)} playerCount={playerCount}/>;
 }
