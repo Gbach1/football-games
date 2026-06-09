@@ -607,33 +607,489 @@ function PossessionPlayOnline({roomId,playerNo,onBack}){
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// SOLO: WHO ARE YA?
+// ═══════════════════════════════════════════════════════════════════
+function WhoAreYa({onBack}){
+  const HINTS=["position","league","country","clubs"];
+  const[target,setTarget]=useState(null);
+  const[revealed,setRevealed]=useState(0);
+  const[input,setInput]=useState("");
+  const[suggestions,setSuggestions]=useState([]);
+  const[guesses,setGuesses]=useState([]);
+  const[result,setResult]=useState(null); // "won"|"lost"
+  const MAX_GUESSES=5;
+
+  const newGame=()=>{
+    const pool=PLAYERS_DB.filter(p=>p.clubs.length>0&&p.position.length>0);
+    const p=pool[Math.floor(Math.random()*pool.length)];
+    setTarget(p);setRevealed(1);setInput("");setSuggestions([]);setGuesses([]);setResult(null);
+  };
+
+  useEffect(()=>{ if(PLAYERS_DB.length>0) newGame(); },[]);
+
+  const handleInputChange=(val)=>{
+    setInput(val);
+    if(val.length<2){setSuggestions([]);return;}
+    setSuggestions(PLAYERS_DB.filter(p=>p.name.toLowerCase().includes(val.toLowerCase())).slice(0,5));
+  };
+
+  const handleGuess=(name)=>{
+    if(!target||result) return;
+    const found=PLAYERS_DB.find(p=>normalize(p.name)===normalize(name));
+    if(!found){setInput("");setSuggestions([]);return;}
+    const correct=normalize(found.name)===normalize(target.name);
+    const newGuesses=[...guesses,{name:found.name,correct}];
+    setGuesses(newGuesses);
+    setInput("");setSuggestions([]);
+    if(correct){setResult("won");return;}
+    if(newGuesses.length>=MAX_GUESSES){setResult("lost");return;}
+    setRevealed(Math.min(revealed+1,HINTS.length));
+  };
+
+  const hintLabel=(hint)=>{
+    if(!target) return "";
+    if(hint==="position") return `📍 Position: ${target.position.join(", ")||"Ukendt"}`;
+    if(hint==="league") return `🏆 Liga: ${target.league.join(", ")||"Ukendt"}`;
+    if(hint==="country") return `🌍 Land: ${target.country||"Ukendt"}`;
+    if(hint==="clubs") return `🏟️ Klubber: ${target.clubs.join(" → ")||"Ukendt"}`;
+    return "";
+  };
+
+  if(!target) return <div style={{minHeight:"100vh",background:"#060d18",display:"flex",alignItems:"center",justifyContent:"center",color:"#475569",fontFamily:"Inter,sans-serif"}}>Indlæser...</div>;
+
+  return(
+    <div style={{minHeight:"100vh",background:"#060d18",color:"#f1f5f9",fontFamily:"'Inter',sans-serif",padding:16,boxSizing:"border-box",maxWidth:500,margin:"0 auto"}}>
+      <div style={{display:"flex",alignItems:"center",marginBottom:20}}>
+        <button onClick={onBack} style={{background:"#0d1b2a",border:"1px solid #1e3045",borderRadius:8,color:"#64748b",padding:"6px 12px",cursor:"pointer",fontSize:13}}>← Menu</button>
+        <h2 style={{flex:1,textAlign:"center",margin:0,fontSize:18,fontWeight:800,color:"#f59e0b"}}>🕵️ Who Are Ya?</h2>
+        <button onClick={newGame} style={{background:"#0d1b2a",border:"1px solid #1e3045",borderRadius:8,color:"#64748b",padding:"6px 12px",cursor:"pointer",fontSize:13}}>🔄</button>
+      </div>
+
+      <div style={{textAlign:"center",marginBottom:16,color:"#475569",fontSize:12}}>Gæt spilleren ud fra hints • {MAX_GUESSES-guesses.length} gæt tilbage</div>
+
+      {/* Hints */}
+      <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
+        {HINTS.slice(0,revealed).map((hint,i)=>(
+          <div key={hint} style={{background:"#0d1b2a",border:"1px solid #1e3045",borderRadius:10,padding:"12px 16px",fontSize:13,color:"#94a3b8",animation:"fadeIn 0.3s"}}>
+            {hintLabel(hint)}
+          </div>
+        ))}
+        {HINTS.slice(revealed).map((hint,i)=>(
+          <div key={hint} style={{background:"#060d18",border:"1px dashed #1e3045",borderRadius:10,padding:"12px 16px",fontSize:13,color:"#1e3045"}}>
+            🔒 Hint {revealed+i+1} låses op ved forkert gæt
+          </div>
+        ))}
+      </div>
+
+      {/* Guesses */}
+      {guesses.length>0&&(
+        <div style={{marginBottom:16,display:"flex",flexDirection:"column",gap:6}}>
+          {guesses.map((g,i)=>(
+            <div key={i} style={{background:g.correct?"#071a12":"#1a0808",border:`1px solid ${g.correct?"#10b981":"#ef4444"}`,borderRadius:8,padding:"8px 14px",fontSize:13,display:"flex",justifyContent:"space-between"}}>
+              <span>{g.name}</span>
+              <span>{g.correct?"✅":"❌"}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Result */}
+      {result&&(
+        <div style={{background:result==="won"?"#071a12":"#1a0808",border:`2px solid ${result==="won"?"#10b981":"#ef4444"}`,borderRadius:16,padding:"16px 20px",textAlign:"center",marginBottom:16}}>
+          <div style={{fontSize:22,fontWeight:900,color:result==="won"?"#10b981":"#ef4444"}}>
+            {result==="won"?"🏆 Korrekt!":"😔 Det var "+target.name}
+          </div>
+          {target.photo&&<img src={target.photo} alt={target.name} style={{width:60,height:60,borderRadius:"50%",margin:"10px auto",display:"block",objectFit:"cover"}}/>}
+          <button onClick={newGame} style={{marginTop:10,background:result==="won"?"#10b981":"#3b82f6",border:"none",borderRadius:8,color:"white",fontWeight:800,padding:"8px 24px",cursor:"pointer",fontSize:14}}>Næste spiller →</button>
+        </div>
+      )}
+
+      {/* Input */}
+      {!result&&(
+        <div style={{position:"relative"}}>
+          <div style={{display:"flex",gap:8}}>
+            <input autoFocus value={input} onChange={e=>handleInputChange(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter"&&input)handleGuess(input);}}
+              placeholder="Hvem er det?"
+              style={{flex:1,background:"#0d1b2a",border:"2px solid #f59e0b",borderRadius:10,padding:"10px 14px",color:"#f1f5f9",fontSize:14,outline:"none"}}/>
+            <button onClick={()=>handleGuess(input)} style={{background:"#f59e0b",border:"none",borderRadius:10,padding:"10px 16px",cursor:"pointer",fontWeight:800,color:"#060d18",fontSize:15}}>✓</button>
+          </div>
+          {suggestions.length>0&&(
+            <div style={{position:"absolute",top:"100%",left:0,right:44,background:"#0d1b2a",border:"1px solid #1e3045",borderRadius:10,marginTop:4,overflow:"hidden",zIndex:30}}>
+              {suggestions.map(p=>(
+                <div key={p.name} onClick={()=>handleGuess(p.name)}
+                  style={{padding:"9px 14px",cursor:"pointer",fontSize:13,borderBottom:"1px solid #0a1525"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="#1a2535"}
+                  onMouseLeave={e=>e.currentTarget.style.background=""}>
+                  {p.name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SOLO: CAREER PATH CHALLENGE
+// ═══════════════════════════════════════════════════════════════════
+function CareerPath({onBack}){
+  const[target,setTarget]=useState(null);
+  const[input,setInput]=useState("");
+  const[suggestions,setSuggestions]=useState([]);
+  const[guesses,setGuesses]=useState([]);
+  const[result,setResult]=useState(null);
+  const[revealedClubs,setRevealedClubs]=useState(1);
+  const MAX_GUESSES=5;
+
+  const newGame=()=>{
+    const pool=PLAYERS_DB.filter(p=>p.clubs.length>=2);
+    const p=pool[Math.floor(Math.random()*pool.length)];
+    setTarget(p);setInput("");setSuggestions([]);setGuesses([]);setResult(null);setRevealedClubs(1);
+  };
+
+  useEffect(()=>{ if(PLAYERS_DB.length>0) newGame(); },[]);
+
+  const handleInputChange=(val)=>{
+    setInput(val);
+    if(val.length<2){setSuggestions([]);return;}
+    setSuggestions(PLAYERS_DB.filter(p=>p.name.toLowerCase().includes(val.toLowerCase())).slice(0,5));
+  };
+
+  const handleGuess=(name)=>{
+    if(!target||result) return;
+    const found=PLAYERS_DB.find(p=>normalize(p.name)===normalize(name));
+    if(!found){setInput("");setSuggestions([]);return;}
+    const correct=normalize(found.name)===normalize(target.name);
+    const newGuesses=[...guesses,{name:found.name,correct}];
+    setGuesses(newGuesses);
+    setInput("");setSuggestions([]);
+    if(correct){setResult("won");return;}
+    if(newGuesses.length>=MAX_GUESSES){setResult("lost");return;}
+    setRevealedClubs(Math.min(revealedClubs+1,target.clubs.length));
+  };
+
+  if(!target) return <div style={{minHeight:"100vh",background:"#060d18",display:"flex",alignItems:"center",justifyContent:"center",color:"#475569",fontFamily:"Inter,sans-serif"}}>Indlæser...</div>;
+
+  const clubs=target.clubs.slice(0,revealedClubs);
+
+  return(
+    <div style={{minHeight:"100vh",background:"#060d18",color:"#f1f5f9",fontFamily:"'Inter',sans-serif",padding:16,boxSizing:"border-box",maxWidth:500,margin:"0 auto"}}>
+      <div style={{display:"flex",alignItems:"center",marginBottom:20}}>
+        <button onClick={onBack} style={{background:"#0d1b2a",border:"1px solid #1e3045",borderRadius:8,color:"#64748b",padding:"6px 12px",cursor:"pointer",fontSize:13}}>← Menu</button>
+        <h2 style={{flex:1,textAlign:"center",margin:0,fontSize:18,fontWeight:800,color:"#a78bfa"}}>🗺️ Career Path</h2>
+        <button onClick={newGame} style={{background:"#0d1b2a",border:"1px solid #1e3045",borderRadius:8,color:"#64748b",padding:"6px 12px",cursor:"pointer",fontSize:13}}>🔄</button>
+      </div>
+
+      <div style={{textAlign:"center",marginBottom:16,color:"#475569",fontSize:12}}>Gæt spilleren fra karrierevejen • {MAX_GUESSES-guesses.length} gæt tilbage</div>
+
+      {/* Career path */}
+      <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:20,alignItems:"center"}}>
+        {clubs.map((club,i)=>(
+          <div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+            <div style={{background:"#0d1b2a",border:"1px solid #7c3aed",borderRadius:10,padding:"10px 24px",fontSize:14,fontWeight:700,color:"#a78bfa",minWidth:200,textAlign:"center"}}>{club}</div>
+            {i<clubs.length-1&&<div style={{color:"#334155",fontSize:16}}>↓</div>}
+          </div>
+        ))}
+        {target.clubs.length>revealedClubs&&!result&&(
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+            <div style={{color:"#334155",fontSize:16}}>↓</div>
+            <div style={{background:"#060d18",border:"1px dashed #1e3045",borderRadius:10,padding:"10px 24px",fontSize:13,color:"#1e3045",minWidth:200,textAlign:"center"}}>🔒 Næste klub</div>
+          </div>
+        )}
+      </div>
+
+      {/* Guesses */}
+      {guesses.length>0&&(
+        <div style={{marginBottom:16,display:"flex",flexDirection:"column",gap:6}}>
+          {guesses.map((g,i)=>(
+            <div key={i} style={{background:g.correct?"#071a12":"#1a0808",border:`1px solid ${g.correct?"#10b981":"#ef4444"}`,borderRadius:8,padding:"8px 14px",fontSize:13,display:"flex",justifyContent:"space-between"}}>
+              <span>{g.name}</span><span>{g.correct?"✅":"❌"}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {result&&(
+        <div style={{background:result==="won"?"#071a12":"#1a0808",border:`2px solid ${result==="won"?"#10b981":"#ef4444"}`,borderRadius:16,padding:"16px 20px",textAlign:"center",marginBottom:16}}>
+          <div style={{fontSize:22,fontWeight:900,color:result==="won"?"#10b981":"#ef4444"}}>
+            {result==="won"?"🏆 Korrekt!":"😔 Det var "+target.name}
+          </div>
+          <div style={{fontSize:12,color:"#475569",marginTop:6}}>{target.clubs.join(" → ")}</div>
+          <button onClick={newGame} style={{marginTop:10,background:"#7c3aed",border:"none",borderRadius:8,color:"white",fontWeight:800,padding:"8px 24px",cursor:"pointer",fontSize:14}}>Næste spiller →</button>
+        </div>
+      )}
+
+      {!result&&(
+        <div style={{position:"relative"}}>
+          <div style={{display:"flex",gap:8}}>
+            <input autoFocus value={input} onChange={e=>handleInputChange(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter"&&input)handleGuess(input);}}
+              placeholder="Hvem er det?"
+              style={{flex:1,background:"#0d1b2a",border:"2px solid #7c3aed",borderRadius:10,padding:"10px 14px",color:"#f1f5f9",fontSize:14,outline:"none"}}/>
+            <button onClick={()=>handleGuess(input)} style={{background:"#7c3aed",border:"none",borderRadius:10,padding:"10px 16px",cursor:"pointer",fontWeight:800,color:"white",fontSize:15}}>✓</button>
+          </div>
+          {suggestions.length>0&&(
+            <div style={{position:"absolute",top:"100%",left:0,right:44,background:"#0d1b2a",border:"1px solid #1e3045",borderRadius:10,marginTop:4,overflow:"hidden",zIndex:30}}>
+              {suggestions.map(p=>(
+                <div key={p.name} onClick={()=>handleGuess(p.name)}
+                  style={{padding:"9px 14px",cursor:"pointer",fontSize:13,borderBottom:"1px solid #0a1525"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="#1a2535"}
+                  onMouseLeave={e=>e.currentTarget.style.background=""}>
+                  {p.name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SOLO: POSSESSION PLAY vs COMPUTER
+// ═══════════════════════════════════════════════════════════════════
+function PossessionPlaySolo({onBack}){
+  const[hexes,setHexes]=useState(()=>buildHexGrid());
+  const[activeHex,setActiveHex]=useState(null);
+  const[input,setInput]=useState("");
+  const[suggestions,setSuggestions]=useState([]);
+  const[error,setError]=useState("");
+  const[usedPlayers,setUsedPlayers]=useState([]);
+  const[gameOver,setGameOver]=useState(false);
+  const[flash,setFlash]=useState(null);
+  const[lastClaimed,setLastClaimed]=useState(null);
+  const[cpuThinking,setCpuThinking]=useState(false);
+
+  const scores={1:hexes.filter(h=>h.owner===1).length,2:hexes.filter(h=>h.owner===2).length};
+  const winner=gameOver?(scores[1]>scores[2]?1:scores[2]>scores[1]?2:"draw"):null;
+
+  useEffect(()=>{ if(hexes.every(h=>h.owner!==null)) setGameOver(true); },[hexes]);
+
+  // CPU turn
+  const doCpuTurn=(currentHexes,currentUsed)=>{
+    setCpuThinking(true);
+    setTimeout(()=>{
+      const neutralHexes=currentHexes.filter(h=>h.owner===null);
+      if(!neutralHexes.length){setGameOver(true);setCpuThinking(false);return;}
+
+      // CPU picks best hex (most neighbors it can steal)
+      let bestHex=null,bestPlayer=null,bestScore=0;
+      for(const hex of neutralHexes.slice(0,10)){
+        const cat=catById(hex.category);
+        const neighborIds=getNeighborIds(currentHexes,hex.id);
+        const validPlayers=PLAYERS_DB.filter(p=>!currentUsed.includes(p.name)&&cat.check(p));
+        for(const p of validPlayers){
+          const steals=neighborIds.filter(nid=>{const nh=currentHexes.find(h=>h.id===nid);return nh&&catById(nh.category).check(p);}).length;
+          if(steals+1>bestScore){bestScore=steals+1;bestHex=hex;bestPlayer=p;}
+        }
+      }
+
+      if(!bestHex||!bestPlayer){setGameOver(true);setCpuThinking(false);return;}
+
+      const neighborIds=getNeighborIds(currentHexes,bestHex.id);
+      const claimedIds=[bestHex.id];
+      const newHexes=currentHexes.map(h=>{
+        if(h.id===bestHex.id) return{...h,owner:2};
+        if(neighborIds.includes(h.id)&&catById(h.category).check(bestPlayer)){claimedIds.push(h.id);return{...h,owner:2};}
+        return h;
+      });
+
+      setFlash({hexIds:claimedIds,owner:2});
+      setTimeout(()=>setFlash(null),800);
+      setLastClaimed({name:bestPlayer.name,count:claimedIds.length,cpu:true});
+      setUsedPlayers([...currentUsed,bestPlayer.name]);
+      setHexes(newHexes);
+      setCpuThinking(false);
+    },1200);
+  };
+
+  const handleHexClick=(hex)=>{
+    if(gameOver||hex.owner!==null||cpuThinking) return;
+    setActiveHex(hex.id);setInput("");setError("");setSuggestions([]);
+  };
+
+  const handleInputChange=(val)=>{
+    setInput(val);setError("");
+    if(val.length<2){setSuggestions([]);return;}
+    setSuggestions(PLAYERS_DB.filter(p=>p.name.toLowerCase().includes(val.toLowerCase())&&!usedPlayers.includes(p.name)).slice(0,5));
+  };
+
+  const handleGuess=(playerName)=>{
+    if(activeHex===null) return;
+    const hex=hexes.find(h=>h.id===activeHex);
+    const cat=catById(hex.category);
+    const found=PLAYERS_DB.find(p=>normalize(p.name)===normalize(playerName));
+    if(!found){setError("Spilleren findes ikke");return;}
+    if(usedPlayers.includes(found.name)){setError("Allerede brugt!");return;}
+    if(!cat.check(found)){setError(`${found.name} passer ikke til "${cat.label}"`);return;}
+
+    const neighborIds=getNeighborIds(hexes,activeHex);
+    const claimedIds=[activeHex];
+    const newHexes=hexes.map(h=>{
+      if(h.id===activeHex) return{...h,owner:1};
+      if(neighborIds.includes(h.id)&&catById(h.category).check(found)){claimedIds.push(h.id);return{...h,owner:1};}
+      return h;
+    });
+
+    const newUsed=[...usedPlayers,found.name];
+    setFlash({hexIds:claimedIds,owner:1});
+    setTimeout(()=>setFlash(null),800);
+    setLastClaimed({name:found.name,count:claimedIds.length,cpu:false});
+    setActiveHex(null);setInput("");setSuggestions([]);setError("");
+    setUsedPlayers(newUsed);
+    setHexes(newHexes);
+
+    if(!newHexes.every(h=>h.owner!==null)) doCpuTurn(newHexes,newUsed);
+    else setGameOver(true);
+  };
+
+  const resetGame=()=>{
+    setHexes(buildHexGrid());setActiveHex(null);setInput("");setSuggestions([]);
+    setError("");setUsedPlayers([]);setGameOver(false);setFlash(null);setLastClaimed(null);setCpuThinking(false);
+  };
+
+  const HEX_R=34,HEX_W=HEX_R*Math.sqrt(3),V_GAP=HEX_R*2*0.75;
+  const maxW=Math.max(...HEX_ROWS)*(HEX_W+2),svgH=HEX_ROWS.length*V_GAP+HEX_R*2;
+
+  function hexCenter(row,col){
+    const rw=HEX_ROWS[row]*HEX_W+(HEX_ROWS[row]-1)*2,mw=Math.max(...HEX_ROWS)*HEX_W+(Math.max(...HEX_ROWS)-1)*2;
+    return{x:(mw-rw)/2+col*(HEX_W+2)+HEX_W/2+8,y:row*V_GAP+HEX_R+4};
+  }
+  function hexPoints(cx,cy){return Array.from({length:6},(_,i)=>{const a=(Math.PI/3)*i-Math.PI/6;return`${cx+HEX_R*Math.cos(a)},${cy+HEX_R*Math.sin(a)}`;}).join(" ");}
+  function getHexFill(hex){
+    if(flash?.hexIds.includes(hex.id)) return flash.owner===1?"#60a5fa":"#f87171";
+    if(hex.id===activeHex) return"#0a2518";
+    if(hex.owner===1) return"#0a1628";
+    if(hex.owner===2) return"#1a0808";
+    return"#0d1b2a";
+  }
+  function getHexStroke(hex){
+    if(hex.id===activeHex) return"#10b981";
+    if(hex.owner===1) return"#3b82f6";
+    if(hex.owner===2) return"#ef4444";
+    return"#1e3045";
+  }
+
+  return(
+    <div style={{minHeight:"100vh",background:"#060d18",color:"#f1f5f9",fontFamily:"'Inter',sans-serif",padding:16,boxSizing:"border-box"}}>
+      <div style={{display:"flex",alignItems:"center",marginBottom:10}}>
+        <button onClick={onBack} style={{background:"#0d1b2a",border:"1px solid #1e3045",borderRadius:8,color:"#64748b",padding:"6px 12px",cursor:"pointer",fontSize:13}}>← Menu</button>
+        <h2 style={{flex:1,textAlign:"center",margin:0,fontSize:17,fontWeight:800,color:"#10b981"}}>🔷 Possession Play</h2>
+        <button onClick={resetGame} style={{background:"#0d1b2a",border:"1px solid #1e3045",borderRadius:8,color:"#64748b",padding:"6px 12px",cursor:"pointer",fontSize:13}}>🔄</button>
+      </div>
+
+      <div style={{display:"flex",justifyContent:"center",gap:10,marginBottom:10,maxWidth:420,margin:"0 auto 10px"}}>
+        {[{p:1,label:"DIG"},{p:2,label:"CPU 🤖"}].map(({p,label})=>(
+          <div key={p} style={{flex:1,background:p===1?"#0a1628":"#1a0808",border:`2px solid ${p===1?"#3b82f6":"#ef4444"}`,borderRadius:12,padding:"8px 12px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontSize:10,color:"#475569",fontWeight:700}}>{label}</span>
+              <span style={{fontSize:18,fontWeight:800,color:p===1?"#3b82f6":"#ef4444"}}>{scores[p]}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {!gameOver&&(
+        <div style={{textAlign:"center",marginBottom:8}}>
+          <span style={{fontSize:11,fontWeight:600,color:cpuThinking?"#ef4444":"#10b981",background:cpuThinking?"#1a0808":"#071a12",border:`1px solid ${cpuThinking?"#ef4444":"#10b981"}`,borderRadius:20,padding:"3px 12px"}}>
+            {cpuThinking?"🤖 CPU tænker...":(activeHex!==null?`Skriv spiller til "${catById(hexes.find(h=>h.id===activeHex)?.category)?.label}"`:"Din tur — tryk på en grå hex")}
+          </span>
+        </div>
+      )}
+
+      {lastClaimed&&!gameOver&&(
+        <div style={{textAlign:"center",marginBottom:6,fontSize:11,color:"#475569"}}>
+          {lastClaimed.cpu?"🤖":"✅"} {lastClaimed.name} → {lastClaimed.count} felt{lastClaimed.count>1?"er":""}
+        </div>
+      )}
+
+      {gameOver&&(
+        <div style={{textAlign:"center",margin:"0 auto 10px",maxWidth:360,background:winner==="draw"?"#0d1b2a":(winner===1?"#071a12":"#1a0808"),border:`2px solid ${winner==="draw"?"#475569":winner===1?"#10b981":"#ef4444"}`,borderRadius:16,padding:"14px 20px"}}>
+          <div style={{fontSize:22,fontWeight:900,color:winner==="draw"?"#94a3b8":winner===1?"#10b981":"#ef4444"}}>
+            {winner==="draw"?"🤝 Uafgjort!":winner===1?"🏆 Du vinder!":"🤖 CPU vinder!"}
+          </div>
+          <div style={{fontSize:13,color:"#475569",marginTop:4}}>{scores[1]} – {scores[2]} hexes</div>
+          <div style={{display:"flex",gap:10,justifyContent:"center",marginTop:10}}>
+            <button onClick={resetGame} style={{background:"#10b981",border:"none",borderRadius:8,color:"white",fontWeight:800,padding:"7px 18px",cursor:"pointer",fontSize:13}}>Igen</button>
+            <button onClick={onBack} style={{background:"#0d1b2a",border:"1px solid #1e3045",borderRadius:8,color:"#94a3b8",padding:"7px 18px",cursor:"pointer",fontSize:13}}>Menu</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{overflowX:"auto",textAlign:"center"}}>
+        <svg width={maxW+16} height={svgH+8} style={{display:"inline-block"}}>
+          {hexes.map(hex=>{
+            const{x,y}=hexCenter(hex.row,hex.col),cat=catById(hex.category);
+            return(<g key={hex.id} onClick={()=>handleHexClick(hex)} style={{cursor:hex.owner!==null||gameOver||cpuThinking?"default":"pointer"}}>
+              <polygon points={hexPoints(x,y)} fill={getHexFill(hex)} stroke={getHexStroke(hex)} strokeWidth={hex.id===activeHex?2.5:1.5} style={{transition:"fill 0.25s"}}/>
+              {hex.owner&&<circle cx={x} cy={y-9} r={4.5} fill={hex.owner===1?"#3b82f6":"#ef4444"}/>}
+              <text x={x} y={y+(hex.owner?3:-2)} textAnchor="middle" fontSize={hex.owner?11:13} fill="#e2e8f0">{cat?.emoji}</text>
+              <text x={x} y={y+(hex.owner?15:11)} textAnchor="middle" fontSize={7} fill={hex.owner?"#334155":"#64748b"} fontWeight="600">
+                {cat?.label.length>10?cat.label.slice(0,9)+"…":cat?.label}
+              </text>
+            </g>);
+          })}
+        </svg>
+      </div>
+
+      {activeHex!==null&&!gameOver&&!cpuThinking&&(
+        <PlayerInput input={input} onChange={handleInputChange} onSubmit={handleGuess} onCancel={()=>{setActiveHex(null);setInput("");setError("");setSuggestions([]);}} error={error} suggestions={suggestions}/>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // HOME SCREEN
 // ═══════════════════════════════════════════════════════════════════
 function HomeScreen({onSelect, playerCount}){
-  const games=[
-    {id:"ttt",title:"Tiki-Taka-Toe",emoji:"⚽",desc:"Fodbold Tic Tac Toe — gæt spillere der passer i 3×3 gitteret",color:"#3b82f6",bg:"#0a1628",border:"#1d4ed8"},
-    {id:"pp",title:"Possession Play",emoji:"🔷",desc:"Hexagonkamp — navngiv spillere, styr territoriet, stjæl nabofelter",color:"#10b981",bg:"#071a12",border:"#059669"},
+  const [tab, setTab] = useState("solo"); // "solo" | "multi"
+
+  const soloGames=[
+    {id:"whoareya",title:"Who Are Ya?",emoji:"🕵️",desc:"Gæt spilleren fra hints — position, liga, land, klubber",color:"#f59e0b",bg:"#1a1200",border:"#92400e"},
+    {id:"careerpath",title:"Career Path",emoji:"🗺️",desc:"Gæt spilleren ud fra hans karrierevej gennem klubberne",color:"#a78bfa",bg:"#0f0a1e",border:"#5b21b6"},
+    {id:"ppSolo",title:"Possession Play",emoji:"🔷",desc:"Spil hex-territoriet mod computeren",color:"#10b981",bg:"#071a12",border:"#059669"},
   ];
+  const multiGames=[
+    {id:"ttt",title:"Tiki-Taka-Toe",emoji:"⚽",desc:"Fodbold Tic Tac Toe — 2 spillere online",color:"#3b82f6",bg:"#0a1628",border:"#1d4ed8"},
+    {id:"pp",title:"Possession Play",emoji:"🔷",desc:"Hexagonkamp mod en ven online",color:"#10b981",bg:"#071a12",border:"#059669"},
+  ];
+
+  const games = tab === "solo" ? soloGames : multiGames;
+
   return(
     <div style={{minHeight:"100vh",background:"#060d18",color:"#f1f5f9",fontFamily:"'Inter',sans-serif",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px 16px",boxSizing:"border-box"}}>
-      <div style={{textAlign:"center",marginBottom:44}}>
-        <div style={{fontSize:52,marginBottom:8}}>⚽</div>
-        <h1 style={{fontSize:30,fontWeight:900,margin:0,letterSpacing:"-1px",color:"#f1f5f9"}}>Football Games</h1>
-        <p style={{color:"#1e3a5f",margin:"8px 0 0",fontSize:12,letterSpacing:"0.08em",textTransform:"uppercase",fontWeight:700}}>Online multiplayer</p>
+      <div style={{textAlign:"center",marginBottom:28}}>
+        <div style={{fontSize:48,marginBottom:6}}>⚽</div>
+        <h1 style={{fontSize:28,fontWeight:900,margin:0,letterSpacing:"-1px",color:"#f1f5f9"}}>Football Games</h1>
         {playerCount>0&&<p style={{color:"#10b981",margin:"6px 0 0",fontSize:12,fontWeight:600}}>⚽ {playerCount} spillere i databasen</p>}
       </div>
-      <div style={{display:"flex",flexDirection:"column",gap:14,width:"100%",maxWidth:460}}>
+
+      {/* Tab switcher */}
+      <div style={{display:"flex",gap:4,background:"#0d1b2a",borderRadius:12,padding:4,marginBottom:20,width:"100%",maxWidth:360}}>
+        {["solo","multi"].map(t=>(
+          <button key={t} onClick={()=>setTab(t)} style={{flex:1,background:tab===t?"#1e3a5f":"transparent",border:"none",borderRadius:9,padding:"10px",cursor:"pointer",color:tab===t?"#f1f5f9":"#475569",fontWeight:700,fontSize:13,transition:"all 0.2s"}}>
+            {t==="solo"?"🎮 Solo":"👥 Multiplayer"}
+          </button>
+        ))}
+      </div>
+
+      <div style={{display:"flex",flexDirection:"column",gap:12,width:"100%",maxWidth:460}}>
         {games.map(g=>(
           <button key={g.id} onClick={()=>onSelect(g.id)}
-            style={{background:g.bg,border:`2px solid ${g.border}`,borderRadius:18,padding:"20px 24px",cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:18,transition:"transform 0.15s"}}
-            onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=`0 8px 32px ${g.color}25`;}}
+            style={{background:g.bg,border:`2px solid ${g.border}`,borderRadius:16,padding:"18px 22px",cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:16,transition:"transform 0.15s"}}
+            onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=`0 8px 32px ${g.color}20`;}}
             onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
-            <div style={{fontSize:34,flexShrink:0}}>{g.emoji}</div>
+            <div style={{fontSize:30,flexShrink:0}}>{g.emoji}</div>
             <div style={{flex:1}}>
-              <div style={{fontSize:17,fontWeight:800,color:g.color,marginBottom:4}}>{g.title}</div>
-              <div style={{fontSize:12,color:"#334155",lineHeight:1.5}}>{g.desc}</div>
+              <div style={{fontSize:16,fontWeight:800,color:g.color,marginBottom:3}}>{g.title}</div>
+              <div style={{fontSize:11,color:"#334155",lineHeight:1.5}}>{g.desc}</div>
             </div>
-            <div style={{color:"#1e3045",fontSize:20,flexShrink:0}}>›</div>
+            <div style={{color:"#1e3045",fontSize:18,flexShrink:0}}>›</div>
           </button>
         ))}
       </div>
@@ -673,10 +1129,16 @@ export default function App(){
     setRoomId(room); setPlayerNo(pNo); setScreen(`play-${game}`);
   };
 
-  if(screen==="lobby-ttt") return <Lobby game="ttt" onJoined={handleJoined("ttt")} onBack={()=>setScreen("home")}/>;
-  if(screen==="lobby-pp")  return <Lobby game="pp"  onJoined={handleJoined("pp")}  onBack={()=>setScreen("home")}/>;
-  if(screen==="play-ttt")  return <TikiTakaToeOnline  roomId={roomId} playerNo={playerNo} onBack={()=>setScreen("home")}/>;
-  if(screen==="play-pp")   return <PossessionPlayOnline roomId={roomId} playerNo={playerNo} onBack={()=>setScreen("home")}/>;
+  if(screen==="lobby-ttt")   return <Lobby game="ttt" onJoined={handleJoined("ttt")} onBack={()=>setScreen("home")}/>;
+  if(screen==="lobby-pp")    return <Lobby game="pp"  onJoined={handleJoined("pp")}  onBack={()=>setScreen("home")}/>;
+  if(screen==="play-ttt")    return <TikiTakaToeOnline roomId={roomId} playerNo={playerNo} onBack={()=>setScreen("home")}/>;
+  if(screen==="play-pp")     return <PossessionPlayOnline roomId={roomId} playerNo={playerNo} onBack={()=>setScreen("home")}/>;
+  if(screen==="whoareya")    return <WhoAreYa onBack={()=>setScreen("home")}/>;
+  if(screen==="careerpath")  return <CareerPath onBack={()=>setScreen("home")}/>;
+  if(screen==="ppSolo")      return <PossessionPlaySolo onBack={()=>setScreen("home")}/>;
 
-  return <HomeScreen onSelect={g=>setScreen(`lobby-${g}`)} playerCount={playerCount}/>;
+  return <HomeScreen onSelect={g=>{
+    if(g==="ttt"||g==="pp") setScreen(`lobby-${g}`);
+    else setScreen(g);
+  }} playerCount={playerCount}/>;
 }
